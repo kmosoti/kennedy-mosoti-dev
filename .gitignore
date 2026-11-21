@@ -1,0 +1,7 @@
+/target/
+/dist/
+/release-artifacts/
+.DS_Store
+*.swp
+*.swo
+.tmp-*

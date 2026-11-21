@@ -1,0 +1,42 @@
+# Payload and asset budgets for kennedy-mosoti-dev (zero Three.js, Leptos 0.8 Islands + iso-diagram)
+# Verified in Rust integration tests (zero Python). Units: KB = 1000 bytes.
+
+schema = 1
+kb = 1000
+
+[[budget]]
+id = "html-ssr"
+label = "SSR HTML document (any route, uncompressed baseline check)"
+target_kb = 45
+limit_kb = 90
+
+[[budget]]
+id = "css"
+label = "Hallmark CSS bundle (tokens + layout + components + site)"
+target_kb = 24
+limit_kb = 40
+
+[[budget]]
+id = "fonts"
+label = "Self-hosted variable WOFF2 fonts (2 latin faces)"
+expect_count = 2
+target_kb = 60
+limit_kb = 70
+
+[[budget]]
+id = "wasm-raw"
+label = "Leptos Islands CSR WASM artifact (raw pre-brotli release ceiling)"
+target_kb = 600
+limit_kb = 900
+
+[[budget]]
+id = "wasm-br"
+label = "Leptos Islands CSR WASM artifact (brotli-compressed transfer ceiling)"
+target_kb = 220
+limit_kb = 350
+
+[[budget]]
+id = "icons"
+label = "PWA and navigation icons"
+target_kb = 20
+limit_kb = 40

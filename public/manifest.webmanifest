@@ -1,0 +1,27 @@
+{
+  "id": "/",
+  "name": "Kennedy Mosoti — Engineering Cockpit",
+  "short_name": "kmosoti",
+  "description": "Interactive 2.5D Rust systems cockpit showcasing Nomos, FabricO11y, Metron, Jacquard, Hephaestus, career biography, and public Wiki/Blog.",
+  "start_url": "/?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "theme_color": "#f4f1ea",
+  "background_color": "#f4f1ea",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": ["engineering", "systems", "documentation"],
+  "prefer_related_applications": false,
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icons/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icons/icon-mono.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "monochrome" }
+  ],
+  "shortcuts": [
+    { "name": "Projects", "url": "/projects?source=shortcut", "icons": [{ "src": "/icons/shortcut-core.png", "sizes": "96x96", "type": "image/png" }] },
+    { "name": "Wiki", "url": "/wiki?source=shortcut", "icons": [{ "src": "/icons/shortcut-obs.png", "sizes": "96x96", "type": "image/png" }] },
+    { "name": "Biography", "url": "/biography?source=shortcut", "icons": [{ "src": "/icons/shortcut-archive.png", "sizes": "96x96", "type": "image/png" }] }
+  ]
+}
