@@ -1,0 +1,62 @@
+# /etc/systemd/system/kennedy-mosoti-dev.service
+# Hardened loopback-only Axum SSR + Leptos Islands service behind Caddy.
+
+[Unit]
+Description=kennedy.mosoti.dev Axum SSR & Leptos Cockpit
+After=network.target
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=exec
+EnvironmentFile=/etc/kennedy-mosoti-dev/site.env
+ExecStart=/opt/kennedy-mosoti-dev/current/bin/site-server
+WorkingDirectory=/opt/kennedy-mosoti-dev/current
+Restart=always
+RestartSec=2
+# Exit code 2 indicates invalid content/contract validation at startup.
+RestartPreventExitStatus=2
+TimeoutStopSec=10
+
+DynamicUser=yes
+PrivateUsers=yes
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+UMask=0077
+
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectProc=invisible
+ProcSubset=pid
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+IPAddressDeny=any
+IPAddressAllow=localhost
+
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+RemoveIPC=yes
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources
+SystemCallErrorNumber=EPERM
+
+MemoryHigh=64M
+MemoryMax=128M
+TasksMax=64
+LimitNOFILE=4096
+
+[Install]
+WantedBy=multi-user.target

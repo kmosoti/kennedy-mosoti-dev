@@ -1,4 +1,5 @@
-//! End-to-end Axum router tests, security header checks, RSS/Atom parsing, and payload budgets.
+//! End-to-end Axum router tests, security header checks, RSS/Atom parsing,
+//! and uncompressed + Brotli/Zstd + post-`wasm-opt -Oz` WASM payload budgets.
 
 use axum::body::{Body, to_bytes};
 use axum::http::{Request, StatusCode, header};
@@ -6,6 +7,7 @@ use site_app::css::combined_stylesheet;
 use site_app::router::render_route;
 use site_content::load_from_dir;
 use site_server::build_router;
+use std::fs;
 use std::io::Write;
 use std::path::PathBuf;
 use tower::Service;
@@ -21,6 +23,12 @@ fn brotli_size(bytes: &[u8]) -> usize {
         w.write_all(bytes).expect("brotli write");
     }
     out.len()
+}
+
+fn zstd_size(bytes: &[u8]) -> usize {
+    zstd::bulk::compress(bytes, 11)
+        .expect("zstd compress")
+        .len()
 }
 
 #[tokio::test]
@@ -54,7 +62,7 @@ async fn server_serves_health_feed_css_fonts_and_ssr_routes_with_csp() {
             "/pkg/site_boot.js",
             StatusCode::OK,
             "application/javascript",
-            "hydrate",
+            "init(",
         ),
         (
             "/fonts/public-sans-var-latin.woff2",
@@ -142,35 +150,35 @@ async fn server_serves_health_feed_css_fonts_and_ssr_routes_with_csp() {
             .expect("body bytes");
         if !expect_substr.is_empty() {
             let text = String::from_utf8_lossy(&body);
-            let needle = if path == "/pkg/site_boot.js" {
-                "init()"
-            } else {
-                expect_substr
-            };
             assert!(
-                text.contains(needle),
-                "route {path} missing expected substring `{needle}`"
+                text.contains(expect_substr),
+                "route {path} missing expected substring `{expect_substr}`"
             );
         }
     }
 }
 
 #[test]
-fn css_fonts_and_ssr_html_respect_budgets_toml() {
+fn css_fonts_ssr_html_and_wasm_respect_budgets_toml() {
     let root = repo_root();
     let content = load_from_dir(&root.join("content")).expect("content loads");
 
     let css = combined_stylesheet();
     let css_br = brotli_size(css.as_bytes());
+    let css_zst = zstd_size(css.as_bytes());
     assert!(
         css_br <= 40_000,
         "CSS brotli size {css_br} B exceeds 40,000 B limit"
     );
+    assert!(
+        css_zst <= 40_000,
+        "CSS zstd size {css_zst} B exceeds 40,000 B limit"
+    );
 
-    let font_a = std::fs::metadata(root.join("public/fonts/public-sans-var-latin.woff2"))
+    let font_a = fs::metadata(root.join("public/fonts/public-sans-var-latin.woff2"))
         .expect("font a")
         .len();
-    let font_b = std::fs::metadata(root.join("public/fonts/jetbrains-mono-var-latin.woff2"))
+    let font_b = fs::metadata(root.join("public/fonts/jetbrains-mono-var-latin.woff2"))
         .expect("font b")
         .len();
     assert!(
@@ -186,12 +194,45 @@ fn css_fonts_and_ssr_html_respect_budgets_toml() {
         "/wiki",
         "/blog",
         "/biography",
+        "/archive",
     ] {
         let page = render_route(&content, route);
+        let html_raw = page.html.len();
         let html_br = brotli_size(page.html.as_bytes());
+        let html_zst = zstd_size(page.html.as_bytes());
         assert!(
-            html_br <= 90_000,
-            "SSR HTML brotli size on {route} ({html_br} B) exceeds 90,000 B limit"
+            html_raw <= 90_000,
+            "SSR HTML uncompressed size on {route} ({html_raw} B) exceeds 90,000 B limit"
         );
+        assert!(
+            html_br <= 25_000,
+            "SSR HTML brotli size on {route} ({html_br} B) exceeds 25,000 B limit"
+        );
+        assert!(
+            html_zst <= 25_000,
+            "SSR HTML zstd size on {route} ({html_zst} B) exceeds 25,000 B limit"
+        );
+    }
+
+    // When browser-bound WASM is staged in target/site/pkg, enforce <= 180,000 B raw & <= 80,000 B br.
+    let pkg_dir = root.join("target/site/pkg");
+    if let Ok(entries) = fs::read_dir(&pkg_dir) {
+        for entry in entries.flatten() {
+            let name = entry.file_name();
+            let name_s = name.to_string_lossy();
+            if name_s.starts_with("site_app") && name_s.ends_with("_bg.wasm") {
+                let bytes = fs::read(entry.path()).expect("read site_app*_bg.wasm");
+                assert!(
+                    bytes.len() <= 180_000,
+                    "{name_s} ({} B) exceeds 180,000 B post-wasm-opt budget",
+                    bytes.len()
+                );
+                let br = brotli_size(&bytes);
+                assert!(
+                    br <= 80_000,
+                    "brotli {name_s} ({br} B) exceeds 80,000 B budget"
+                );
+            }
+        }
     }
 }
