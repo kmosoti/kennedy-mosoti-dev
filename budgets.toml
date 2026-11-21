@@ -1,4 +1,4 @@
-# Payload and asset budgets for kennedy-mosoti-dev (zero Three.js, Leptos 0.8 Islands + iso-diagram)
+# Payload and asset budgets for kennedy-mosoti-dev (zero Three.js, Leptos 0.8 Islands + SSR SceneGeometry)
 # Verified in Rust integration tests (zero Python). Units: KB = 1000 bytes.
 
 schema = 1
@@ -11,9 +11,21 @@ target_kb = 45
 limit_kb = 90
 
 [[budget]]
+id = "html-br"
+label = "SSR HTML document (any route, brotli-compressed transfer ceiling)"
+target_kb = 12
+limit_kb = 25
+
+[[budget]]
+id = "html-zst"
+label = "SSR HTML document (any route, zstd-compressed transfer ceiling)"
+target_kb = 12
+limit_kb = 25
+
+[[budget]]
 id = "css"
-label = "Hallmark CSS bundle (tokens + layout + components + site)"
-target_kb = 24
+label = "Hallmark CSS bundle (tokens + layout + components + site, brotli/zstd)"
+target_kb = 12
 limit_kb = 40
 
 [[budget]]
@@ -25,15 +37,15 @@ limit_kb = 70
 
 [[budget]]
 id = "wasm-raw"
-label = "Leptos Islands CSR WASM artifact (raw pre-brotli release ceiling)"
-target_kb = 600
-limit_kb = 900
+label = "Leptos Islands Hydrate WASM artifact (post-wasm-opt -Oz raw ceiling)"
+target_kb = 120
+limit_kb = 180
 
 [[budget]]
 id = "wasm-br"
-label = "Leptos Islands CSR WASM artifact (brotli-compressed transfer ceiling)"
-target_kb = 220
-limit_kb = 350
+label = "Leptos Islands Hydrate WASM artifact (brotli-compressed transfer ceiling)"
+target_kb = 50
+limit_kb = 80
 
 [[budget]]
 id = "icons"

@@ -1,0 +1,60 @@
+# Caddy edge reverse proxy for kennedy.mosoti.dev
+# Terminates TLS and proxies dynamic SSR, static /pkg, /fonts, /icons, and /feed.xml to Axum.
+
+{$SITE_HOST:kennedy.mosoti.dev} {
+	log {
+		output file {$SITE_LOG:/var/log/caddy/kennedy-mosoti-dev.log} {
+			roll_size 10MB
+			roll_keep 5
+			roll_keep_for 336h
+		}
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		?X-Content-Type-Options "nosniff"
+		?Referrer-Policy "strict-origin-when-cross-origin"
+		?Permissions-Policy "geolocation=(), microphone=(), camera=(), payment=(), usb=()"
+		?Cross-Origin-Opener-Policy "same-origin"
+		?Cross-Origin-Resource-Policy "same-origin"
+		-Server
+	}
+
+	route {
+		@bad_method not method GET HEAD
+		respond @bad_method "method not allowed" 405
+
+		@probes path /wp-admin* /wp-login.php /xmlrpc.php /.env* /.git/* /.aws/* /vendor/* /phpmyadmin* /phpinfo.php /server-status /actuator/* /.ssh/*
+		respond @probes "not found" 404
+
+		@maps path *.map
+		respond @maps "not found" 404
+
+		@fonts path /fonts/*
+		header @fonts ?Cache-Control "public, max-age=31536000, immutable"
+
+		@icons path /icons/*
+		header @icons ?Cache-Control "public, max-age=86400"
+
+		@pkg path /pkg/*
+		header @pkg ?Cache-Control "no-cache"
+
+		encode {
+			zstd
+			gzip 6
+			minimum_length 512
+			match {
+				header Content-Type text/html* text/css* text/javascript* application/javascript* application/atom+xml* application/rss+xml* application/xml* application/manifest+json*
+			}
+		}
+
+		reverse_proxy {$SITE_ORIGIN:127.0.0.1:3000} {
+			lb_try_duration 5s
+			lb_try_interval 250ms
+		}
+	}
+
+	handle_errors {
+		respond "{err.status_code}" {err.status_code}
+	}
+}

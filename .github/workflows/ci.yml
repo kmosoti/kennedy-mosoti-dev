@@ -26,10 +26,12 @@ jobs:
       - name: Clippy lint gate
         run: cargo clippy --workspace --all-targets --locked -- -D warnings
 
-      - name: Test suite
+      - name: Test suite (content, WCAG, HTTP, budgets, privacy, SHA pins)
         run: cargo test --workspace --locked
 
-      - name: WASM CSR & Hydrate checks
+      - name: WASM CSR, Hydrate & Release Budget checks
         run: |
           cargo check -p site-app --no-default-features --features csr --target wasm32-unknown-unknown --locked
           cargo check -p site-app --no-default-features --features hydrate --target wasm32-unknown-unknown --locked
+          cargo build --profile wasm-release --locked -p site-app --no-default-features --features hydrate --target wasm32-unknown-unknown
+          cargo test --workspace --locked --test release_and_privacy_gates
