@@ -1,0 +1,486 @@
+/* Hallmark Dual-Material Design Tokens: Atelier-Draft (Light) x Oxide-Monolith (Dark)
+ * Modern CSS Cascade Architecture: explicit layer order, zero global `*` reset, zero `!important`.
+ * Chromium #565837690 guard: NEVER use color-mix(in oklch, ...) with low-chroma neutrals (C < 0.02).
+ */
+@layer reset, tokens, base, layout, components, site, utilities;
+
+@font-face {
+  font-family: "Public Sans";
+  src: url("/fonts/public-sans-var-latin.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("/fonts/jetbrains-mono-var-latin.woff2") format("woff2");
+  font-weight: 100 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+@layer reset {
+  html,
+  body {
+    margin: 0;
+    padding: 0;
+  }
+
+  html {
+    box-sizing: border-box;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body,
+  header,
+  nav,
+  main,
+  aside,
+  section,
+  article,
+  footer,
+  dialog,
+  form,
+  details,
+  summary,
+  figure,
+  pre,
+  div,
+  ul,
+  ol,
+  li,
+  dl,
+  dt,
+  dd,
+  table,
+  button,
+  input,
+  select {
+    box-sizing: inherit;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  p,
+  figure,
+  dl,
+  dd {
+    margin: 0;
+  }
+
+  ul,
+  ol {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  button,
+  input,
+  select {
+    font: inherit;
+    color: inherit;
+  }
+
+  svg {
+    display: block;
+  }
+}
+
+@layer tokens {
+  :root {
+    color-scheme: light dark;
+
+    /* ── Typography Scale (rem + clamp, max <= 2.5 * min for 200% zoom) ── */
+    --font-sans: "Public Sans", ui-sans-serif, system-ui, -apple-system, sans-serif;
+    --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+    --text-2xs: clamp(0.75rem, 0.74rem + 0.08vw, 0.8125rem);
+    --text-xs: clamp(0.75rem, 0.73rem + 0.14vw, 0.84rem);
+    --text-sm: clamp(0.875rem, 0.84rem + 0.16vw, 0.9375rem);
+    --text-base: clamp(0.9375rem, 0.9rem + 0.2vw, 1.0625rem);
+    --text-lg: clamp(1.125rem, 1.04rem + 0.35vw, 1.35rem);
+    --text-xl: clamp(1.375rem, 1.2rem + 0.65vw, 1.85rem);
+
+    --leading-tight: 1.22;
+    --leading-base: 1.52;
+    --leading-relaxed: 1.65;
+
+    /* ── Spacing, Radii & Control Geometry ── */
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+    --space-5: 1.25rem;
+    --space-6: 1.5rem;
+    --space-8: 2rem;
+
+    --radius-xs: 0.1875rem;
+    --radius-sm: 0.3125rem;
+    --radius-md: 0.4375rem;
+
+    --control-min-block: 1.75rem;
+    --topbar-min-block: 2.75rem;
+    --rail-left-width: 14.75rem;
+    --rail-right-width: 19rem;
+
+    /* ── Tier 1: Atelier-Draft (Warm Archival Paper Daylight) ── */
+    --l-canvas: oklch(0.968 0.009 84);
+    --l-rail: oklch(0.944 0.011 82);
+    --l-surface: oklch(0.988 0.005 85);
+    --l-surface-hover: oklch(0.922 0.013 80);
+    --l-surface-active: oklch(0.896 0.018 78);
+    --l-stage-bg: oklch(0.938 0.011 83);
+    --l-stage-grid: oklch(0.855 0.012 80);
+
+    --l-ink: oklch(0.205 0.014 252);
+    --l-ink-muted: oklch(0.415 0.014 252);
+    --l-ink-subtle: oklch(0.465 0.012 252);
+
+    --l-border: oklch(0.815 0.012 80);
+    --l-border-strong: oklch(0.580 0.015 250);
+    --l-accent: oklch(0.44 0.13 245);
+    --l-accent-ink: oklch(0.99 0.004 85);
+    --l-accent-tint: oklch(0.915 0.032 245);
+    --l-focus-ring: oklch(0.44 0.14 245);
+    --l-scrim: oklch(0.18 0.01 255 / 0.42);
+    --l-scroll-track: oklch(0.935 0.008 82);
+    --l-scroll-thumb: oklch(0.56 0.012 250);
+
+    /* Perceptually uniform OKLCH semantic status */
+    --l-status-ok: oklch(0.42 0.13 152);
+    --l-status-ok-bg: oklch(0.93 0.032 152);
+    --l-status-warn: oklch(0.44 0.13 72);
+    --l-status-warn-bg: oklch(0.94 0.038 76);
+    --l-status-err: oklch(0.44 0.13 24);
+    --l-status-err-bg: oklch(0.94 0.032 24);
+    --l-status-info: oklch(0.44 0.13 248);
+    --l-status-info-bg: oklch(0.93 0.032 248);
+
+    /* Isometric sprite drafting tones (Atelier-Draft light) */
+    --l-iso-shadow-soft: oklch(0.24 0.012 255 / 0.09);
+    --l-iso-shadow: oklch(0.22 0.012 255 / 0.17);
+    --l-iso-shadow-core: oklch(0.20 0.012 255 / 0.28);
+    --l-iso-top: oklch(0.985 0.005 85);
+    --l-iso-left: oklch(0.895 0.011 82);
+    --l-iso-right: oklch(0.790 0.014 250);
+    --l-iso-metal-light: oklch(0.86 0.009 250);
+    --l-iso-metal-dark: oklch(0.62 0.014 250);
+    --l-iso-dark: oklch(0.32 0.016 252);
+    --l-iso-outline: oklch(0.34 0.016 252);
+    --l-iso-tint-slate: oklch(0.48 0.035 250);
+    --l-iso-tint-pine: oklch(0.45 0.13 152);
+    --l-iso-tint-amber: oklch(0.50 0.13 70);
+    --l-iso-tint-crimson: oklch(0.46 0.13 24);
+    --l-iso-tint-cobalt: oklch(0.45 0.13 248);
+    --l-iso-tint-plum: oklch(0.46 0.09 325);
+    --l-iso-tint-sage: oklch(0.47 0.085 168);
+
+    /* ── Tier 1: Oxide-Monolith (Deep Neutral Night) ── */
+    --d-canvas: oklch(0.155 0.007 255);
+    --d-rail: oklch(0.182 0.008 255);
+    --d-surface: oklch(0.212 0.009 255);
+    --d-surface-hover: oklch(0.255 0.011 255);
+    --d-surface-active: oklch(0.295 0.014 252);
+    --d-stage-bg: oklch(0.145 0.007 255);
+    --d-stage-grid: oklch(0.245 0.010 255);
+
+    --d-ink: oklch(0.935 0.007 85);
+    --d-ink-muted: oklch(0.745 0.010 255);
+    --d-ink-subtle: oklch(0.665 0.010 255);
+
+    --d-border: oklch(0.325 0.011 255);
+    --d-border-strong: oklch(0.580 0.014 255);
+    --d-accent: oklch(0.74 0.14 242);
+    --d-accent-ink: oklch(0.14 0.010 255);
+    --d-accent-tint: oklch(0.28 0.042 245);
+    --d-focus-ring: oklch(0.78 0.14 242);
+    --d-scrim: oklch(0.08 0.005 255 / 0.68);
+    --d-scroll-track: oklch(0.175 0.007 255);
+    --d-scroll-thumb: oklch(0.48 0.012 255);
+
+    --d-status-ok: oklch(0.75 0.14 152);
+    --d-status-ok-bg: oklch(0.24 0.045 152);
+    --d-status-warn: oklch(0.75 0.14 78);
+    --d-status-warn-bg: oklch(0.26 0.045 78);
+    --d-status-err: oklch(0.75 0.14 24);
+    --d-status-err-bg: oklch(0.25 0.048 24);
+    --d-status-info: oklch(0.75 0.14 248);
+    --d-status-info-bg: oklch(0.25 0.048 248);
+
+    --d-iso-shadow-soft: oklch(0.06 0.005 255 / 0.22);
+    --d-iso-shadow: oklch(0.05 0.005 255 / 0.36);
+    --d-iso-shadow-core: oklch(0.04 0.005 255 / 0.52);
+    --d-iso-top: oklch(0.33 0.012 255);
+    --d-iso-left: oklch(0.27 0.011 255);
+    --d-iso-right: oklch(0.21 0.010 255);
+    --d-iso-metal-light: oklch(0.44 0.012 255);
+    --d-iso-metal-dark: oklch(0.28 0.010 255);
+    --d-iso-dark: oklch(0.14 0.008 255);
+    --d-iso-outline: oklch(0.62 0.014 255);
+    --d-iso-tint-slate: oklch(0.70 0.035 250);
+    --d-iso-tint-pine: oklch(0.75 0.14 152);
+    --d-iso-tint-amber: oklch(0.75 0.14 78);
+    --d-iso-tint-crimson: oklch(0.75 0.14 24);
+    --d-iso-tint-cobalt: oklch(0.75 0.14 248);
+    --d-iso-tint-plum: oklch(0.74 0.10 325);
+    --d-iso-tint-sage: oklch(0.74 0.095 168);
+
+    /* ── Tier 2: Semantic Tokens ── */
+    --bg-canvas: var(--l-canvas);
+    --bg-rail: var(--l-rail);
+    --bg-surface: var(--l-surface);
+    --bg-surface-hover: var(--l-surface-hover);
+    --bg-surface-active: var(--l-surface-active);
+    --bg-stage: var(--l-stage-bg);
+    --stage-grid: var(--l-stage-grid);
+
+    --ink: var(--l-ink);
+    --ink-muted: var(--l-ink-muted);
+    --ink-subtle: var(--l-ink-subtle);
+
+    --border: var(--l-border);
+    --border-strong: var(--l-border-strong);
+    --accent: var(--l-accent);
+    --accent-ink: var(--l-accent-ink);
+    --accent-tint: var(--l-accent-tint);
+    --focus-ring: var(--l-focus-ring);
+    --scrim: var(--l-scrim);
+    --scrollbar-track: var(--l-scroll-track);
+    --scrollbar-thumb: var(--l-scroll-thumb);
+
+    --status-ok: var(--l-status-ok);
+    --status-ok-bg: var(--l-status-ok-bg);
+    --status-warn: var(--l-status-warn);
+    --status-warn-bg: var(--l-status-warn-bg);
+    --status-err: var(--l-status-err);
+    --status-err-bg: var(--l-status-err-bg);
+    --status-info: var(--l-status-info);
+    --status-info-bg: var(--l-status-info-bg);
+
+    --iso-shadow-soft: var(--l-iso-shadow-soft);
+    --iso-shadow: var(--l-iso-shadow);
+    --iso-shadow-core: var(--l-iso-shadow-core);
+    --iso-top: var(--l-iso-top);
+    --iso-left: var(--l-iso-left);
+    --iso-right: var(--l-iso-right);
+    --iso-metal-light: var(--l-iso-metal-light);
+    --iso-metal-dark: var(--l-iso-metal-dark);
+    --iso-dark: var(--l-iso-dark);
+    --iso-outline: var(--l-iso-outline);
+    --iso-tint-slate: var(--l-iso-tint-slate);
+    --iso-tint-pine: var(--l-iso-tint-pine);
+    --iso-tint-amber: var(--l-iso-tint-amber);
+    --iso-tint-crimson: var(--l-iso-tint-crimson);
+    --iso-tint-cobalt: var(--l-iso-tint-cobalt);
+    --iso-tint-plum: var(--l-iso-tint-plum);
+    --iso-tint-sage: var(--l-iso-tint-sage);
+
+    --pad-cell-block: var(--space-2);
+    --pad-cell-inline: var(--space-3);
+
+    accent-color: var(--accent);
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+
+    @media (prefers-color-scheme: dark) {
+      --bg-canvas: var(--d-canvas);
+      --bg-rail: var(--d-rail);
+      --bg-surface: var(--d-surface);
+      --bg-surface-hover: var(--d-surface-hover);
+      --bg-surface-active: var(--d-surface-active);
+      --bg-stage: var(--d-stage-bg);
+      --stage-grid: var(--d-stage-grid);
+      --ink: var(--d-ink);
+      --ink-muted: var(--d-ink-muted);
+      --ink-subtle: var(--d-ink-subtle);
+      --border: var(--d-border);
+      --border-strong: var(--d-border-strong);
+      --accent: var(--d-accent);
+      --accent-ink: var(--d-accent-ink);
+      --accent-tint: var(--d-accent-tint);
+      --focus-ring: var(--d-focus-ring);
+      --scrim: var(--d-scrim);
+      --scrollbar-track: var(--d-scroll-track);
+      --scrollbar-thumb: var(--d-scroll-thumb);
+      --status-ok: var(--d-status-ok);
+      --status-ok-bg: var(--d-status-ok-bg);
+      --status-warn: var(--d-status-warn);
+      --status-warn-bg: var(--d-status-warn-bg);
+      --status-err: var(--d-status-err);
+      --status-err-bg: var(--d-status-err-bg);
+      --status-info: var(--d-status-info);
+      --status-info-bg: var(--d-status-info-bg);
+      --iso-shadow-soft: var(--d-iso-shadow-soft);
+      --iso-shadow: var(--d-iso-shadow);
+      --iso-shadow-core: var(--d-iso-shadow-core);
+      --iso-top: var(--d-iso-top);
+      --iso-left: var(--d-iso-left);
+      --iso-right: var(--d-iso-right);
+      --iso-metal-light: var(--d-iso-metal-light);
+      --iso-metal-dark: var(--d-iso-metal-dark);
+      --iso-dark: var(--d-iso-dark);
+      --iso-outline: var(--d-iso-outline);
+      --iso-tint-slate: var(--d-iso-tint-slate);
+      --iso-tint-pine: var(--d-iso-tint-pine);
+      --iso-tint-amber: var(--d-iso-tint-amber);
+      --iso-tint-crimson: var(--d-iso-tint-crimson);
+      --iso-tint-cobalt: var(--d-iso-tint-cobalt);
+      --iso-tint-plum: var(--d-iso-tint-plum);
+      --iso-tint-sage: var(--d-iso-tint-sage);
+    }
+
+    @supports (color: light-dark(white, black)) {
+      --bg-canvas: light-dark(var(--l-canvas), var(--d-canvas));
+      --bg-rail: light-dark(var(--l-rail), var(--d-rail));
+      --bg-surface: light-dark(var(--l-surface), var(--d-surface));
+      --bg-surface-hover: light-dark(var(--l-surface-hover), var(--d-surface-hover));
+      --bg-surface-active: light-dark(var(--l-surface-active), var(--d-surface-active));
+      --bg-stage: light-dark(var(--l-stage-bg), var(--d-stage-bg));
+      --stage-grid: light-dark(var(--l-stage-grid), var(--d-stage-grid));
+      --ink: light-dark(var(--l-ink), var(--d-ink));
+      --ink-muted: light-dark(var(--l-ink-muted), var(--d-ink-muted));
+      --ink-subtle: light-dark(var(--l-ink-subtle), var(--d-ink-subtle));
+      --border: light-dark(var(--l-border), var(--d-border));
+      --border-strong: light-dark(var(--l-border-strong), var(--d-border-strong));
+      --accent: light-dark(var(--l-accent), var(--d-accent));
+      --accent-ink: light-dark(var(--l-accent-ink), var(--d-accent-ink));
+      --accent-tint: light-dark(var(--l-accent-tint), var(--d-accent-tint));
+      --focus-ring: light-dark(var(--l-focus-ring), var(--d-focus-ring));
+      --scrim: light-dark(var(--l-scrim), var(--d-scrim));
+      --scrollbar-track: light-dark(var(--l-scroll-track), var(--d-scroll-track));
+      --scrollbar-thumb: light-dark(var(--l-scroll-thumb), var(--d-scroll-thumb));
+      --status-ok: light-dark(var(--l-status-ok), var(--d-status-ok));
+      --status-ok-bg: light-dark(var(--l-status-ok-bg), var(--d-status-ok-bg));
+      --status-warn: light-dark(var(--l-status-warn), var(--d-status-warn));
+      --status-warn-bg: light-dark(var(--l-status-warn-bg), var(--d-status-warn-bg));
+      --status-err: light-dark(var(--l-status-err), var(--d-status-err));
+      --status-err-bg: light-dark(var(--l-status-err-bg), var(--d-status-err-bg));
+      --status-info: light-dark(var(--l-status-info), var(--d-status-info));
+      --status-info-bg: light-dark(var(--l-status-info-bg), var(--d-status-info-bg));
+      --iso-shadow-soft: light-dark(var(--l-iso-shadow-soft), var(--d-iso-shadow-soft));
+      --iso-shadow: light-dark(var(--l-iso-shadow), var(--d-iso-shadow));
+      --iso-shadow-core: light-dark(var(--l-iso-shadow-core), var(--d-iso-shadow-core));
+      --iso-top: light-dark(var(--l-iso-top), var(--d-iso-top));
+      --iso-left: light-dark(var(--l-iso-left), var(--d-iso-left));
+      --iso-right: light-dark(var(--l-iso-right), var(--d-iso-right));
+      --iso-metal-light: light-dark(var(--l-iso-metal-light), var(--d-iso-metal-light));
+      --iso-metal-dark: light-dark(var(--l-iso-metal-dark), var(--d-iso-metal-dark));
+      --iso-dark: light-dark(var(--l-iso-dark), var(--d-iso-dark));
+      --iso-outline: light-dark(var(--l-iso-outline), var(--d-iso-outline));
+      --iso-tint-slate: light-dark(var(--l-iso-tint-slate), var(--d-iso-tint-slate));
+      --iso-tint-pine: light-dark(var(--l-iso-tint-pine), var(--d-iso-tint-pine));
+      --iso-tint-amber: light-dark(var(--l-iso-tint-amber), var(--d-iso-tint-amber));
+      --iso-tint-crimson: light-dark(var(--l-iso-tint-crimson), var(--d-iso-tint-crimson));
+      --iso-tint-cobalt: light-dark(var(--l-iso-tint-cobalt), var(--d-iso-tint-cobalt));
+      --iso-tint-plum: light-dark(var(--l-iso-tint-plum), var(--d-iso-tint-plum));
+      --iso-tint-sage: light-dark(var(--l-iso-tint-sage), var(--d-iso-tint-sage));
+    }
+  }
+
+  :root[data-scheme="light"] {
+    color-scheme: light;
+  }
+
+  :root[data-scheme="dark"] {
+    color-scheme: dark;
+  }
+
+  @media (forced-colors: active) {
+    :root {
+      --bg-canvas: Canvas;
+      --bg-rail: Canvas;
+      --bg-surface: Canvas;
+      --bg-surface-hover: Canvas;
+      --bg-surface-active: Highlight;
+      --bg-stage: Canvas;
+      --stage-grid: GrayText;
+      --ink: CanvasText;
+      --ink-muted: CanvasText;
+      --ink-subtle: GrayText;
+      --border: ButtonBorder;
+      --border-strong: ButtonBorder;
+      --accent: Highlight;
+      --accent-ink: HighlightText;
+      --accent-tint: Canvas;
+      --focus-ring: Highlight;
+      --scrim: Canvas;
+      --status-ok: CanvasText;
+      --status-ok-bg: Canvas;
+      --status-warn: CanvasText;
+      --status-warn-bg: Canvas;
+      --status-err: CanvasText;
+      --status-err-bg: Canvas;
+      --status-info: LinkText;
+      --status-info-bg: Canvas;
+      --iso-shadow-soft: transparent;
+      --iso-shadow: transparent;
+      --iso-shadow-core: transparent;
+      --iso-top: Canvas;
+      --iso-left: Canvas;
+      --iso-right: Canvas;
+      --iso-metal-light: Canvas;
+      --iso-metal-dark: ButtonFace;
+      --iso-dark: CanvasText;
+      --iso-outline: CanvasText;
+      --iso-tint-slate: CanvasText;
+      --iso-tint-pine: CanvasText;
+      --iso-tint-amber: CanvasText;
+      --iso-tint-crimson: CanvasText;
+      --iso-tint-cobalt: Highlight;
+      --iso-tint-plum: CanvasText;
+      --iso-tint-sage: CanvasText;
+    }
+  }
+}
+
+@layer base {
+  body {
+    font-family: var(--font-sans);
+    font-size: var(--text-base);
+    line-height: var(--leading-base);
+    color: var(--ink);
+    background-color: var(--bg-canvas);
+    text-align: start;
+    overflow-wrap: break-word;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    line-height: var(--leading-tight);
+    font-weight: 600;
+    color: var(--ink);
+    text-wrap: balance;
+  }
+
+  h1 { font-size: var(--text-xl); }
+  h2 { font-size: var(--text-lg); }
+  h3 { font-size: var(--text-base); }
+  h4 { font-size: var(--text-sm); }
+
+  a {
+    color: var(--accent);
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.18em;
+  }
+
+  a:hover {
+    color: var(--ink);
+  }
+
+  code,
+  pre,
+  kbd {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+  }
+
+  :where(button, a, summary, input, select, [tabindex]):focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+  }
+}

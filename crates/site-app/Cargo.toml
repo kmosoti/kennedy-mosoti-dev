@@ -1,0 +1,42 @@
+[package]
+name = "site-app"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+description = "Leptos 0.8 Islands/SSR + Hallmark UI for kennedy.mosoti.dev"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+default = ["ssr"]
+ssr = ["leptos/ssr", "leptos/islands", "dep:site-content", "dep:iso-diagram", "dep:serde"]
+hydrate = ["leptos/hydrate", "leptos/islands"]
+csr = ["leptos/csr", "leptos/islands"]
+
+[lints]
+workspace = true
+
+[dependencies]
+iso-diagram = { workspace = true, optional = true }
+leptos.workspace = true
+serde = { workspace = true, optional = true }
+site-content = { workspace = true, optional = true }
+wasm-bindgen.workspace = true
+web-sys = { workspace = true, features = [
+    "Document",
+    "Element",
+    "Event",
+    "EventTarget",
+    "HtmlDialogElement",
+    "HtmlElement",
+    "KeyboardEvent",
+    "MouseEvent",
+    "Node",
+    "NodeList",
+    "PointerEvent",
+    "WheelEvent",
+    "Window",
+] }

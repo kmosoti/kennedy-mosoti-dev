@@ -1,0 +1,142 @@
+/* Site-specific Scoped Surfaces: Project Bays, Markdown Prose, Mermaid Diagrams, Biography */
+@layer site {
+  @scope (.app-surface) {
+    :scope {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-5);
+      min-inline-size: 0;
+    }
+
+    .surface-lead {
+      max-inline-size: 68ch;
+      font-size: var(--text-base);
+      color: var(--ink-muted);
+      text-wrap: pretty;
+    }
+
+    .panel-card {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
+      padding: var(--space-4);
+      background-color: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      content-visibility: auto;
+      contain-intrinsic-block-size: auto 10rem;
+    }
+
+    .card-header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-2);
+    }
+
+    .boundary-callout {
+      padding: var(--space-3);
+      background-color: var(--bg-rail);
+      border-inline-start: 3px solid var(--border-strong);
+      border-radius: var(--radius-xs);
+      font-size: var(--text-xs);
+      color: var(--ink-muted);
+    }
+
+    .tag-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-1);
+    }
+
+    .prose {
+      max-inline-size: 68ch;
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-3);
+      line-height: var(--leading-relaxed);
+    }
+
+    .prose h2 {
+      margin-block-start: var(--space-4);
+      padding-block-end: var(--space-1);
+      border-block-end: 1px solid var(--border);
+    }
+
+    .prose h3 {
+      margin-block-start: var(--space-2);
+    }
+
+    .prose ul,
+    .prose ol {
+      padding-inline-start: var(--space-5);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-1);
+    }
+
+    .prose ul { list-style: disc; }
+    .prose ol { list-style: decimal; }
+
+    .prose table {
+      inline-size: 100%;
+      border-collapse: collapse;
+      font-size: var(--text-xs);
+      border: 1px solid var(--border);
+    }
+
+    .prose th,
+    .prose td {
+      padding-block: var(--pad-cell-block);
+      padding-inline: var(--pad-cell-inline);
+      border: 1px solid var(--border);
+      text-align: start;
+    }
+
+    .prose th {
+      background-color: var(--bg-rail);
+      font-weight: 600;
+    }
+
+    .code-region,
+    .mermaid-diagram {
+      padding: var(--space-3);
+      background-color: var(--bg-rail);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      overflow-x: auto;
+      overscroll-behavior: contain;
+    }
+
+    .mermaid-caption {
+      margin-block-start: var(--space-2);
+      font-size: var(--text-2xs);
+      color: var(--ink-muted);
+    }
+
+    .toc-rail {
+      padding: var(--space-3);
+      background-color: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
+      font-size: var(--text-xs);
+    }
+
+    .toc-list {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-1);
+    }
+
+    .toc-link {
+      display: inline-flex;
+      min-block-size: max(24px, 1.5rem);
+      align-items: center;
+      text-decoration: none;
+    }
+  }
+}
