@@ -1,0 +1,201 @@
+/* Hallmark Cockpit Spatial & Editorial Layout
+ * Responsive CSS Grid with container queries, subgrid KPI strips, and 390x844 mobile reflow.
+ */
+@layer layout {
+  .site-shell {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    min-block-size: 100dvb;
+    inline-size: 100%;
+    background-color: var(--bg-canvas);
+  }
+
+  .site-topbar {
+    position: sticky;
+    inset-block-start: 0;
+    z-index: 5;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: safe center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    min-block-size: var(--topbar-min-block);
+    padding-block: var(--space-2);
+    padding-inline: var(--space-4);
+    background-color: var(--bg-rail);
+    border-block-end: 1px solid var(--border);
+  }
+
+  .topbar-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-inline-size: 0;
+    text-decoration: none;
+    color: var(--ink);
+  }
+
+  .site-nav {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-1);
+  }
+
+  .site-main {
+    min-inline-size: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .cockpit-workspace {
+    display: grid;
+    grid-template-columns: var(--rail-left-width) minmax(0, 1fr) var(--rail-right-width);
+    grid-template-areas: "rail-left stage rail-inspector";
+    min-block-size: min(46rem, 82dvb);
+    border-block-end: 1px solid var(--border);
+    background-color: var(--bg-stage);
+  }
+
+  .rail-left {
+    grid-area: rail-left;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    min-inline-size: 0;
+    padding: var(--space-3);
+    background-color: var(--bg-rail);
+    border-inline-end: 1px solid var(--border);
+  }
+
+  .stage-pane {
+    grid-area: stage;
+    container: stage / inline-size;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    min-inline-size: 0;
+    min-block-size: 0;
+    background-color: var(--bg-stage);
+  }
+
+  .stage-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: safe center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    padding-block: var(--space-2);
+    padding-inline: var(--space-4);
+    background-color: var(--bg-surface);
+    border-block-end: 1px solid var(--border);
+  }
+
+  .inspector-rail {
+    grid-area: rail-inspector;
+    container: inspector / inline-size;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    min-inline-size: 0;
+    padding: var(--space-3);
+    background-color: var(--bg-rail);
+    border-inline-start: 1px solid var(--border);
+  }
+
+  .page-container {
+    inline-size: min(74rem, 100%);
+    margin-inline: auto;
+    padding-block: var(--space-6);
+    padding-inline: var(--space-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+  }
+
+  .editorial-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 18rem);
+    gap: var(--space-6);
+    align-items: start;
+  }
+
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+    gap: var(--space-4);
+  }
+
+  /* Subgrid KPI strip */
+  .kpi-strip {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+    grid-auto-rows: auto auto auto;
+    column-gap: var(--space-3);
+    row-gap: var(--space-2);
+  }
+
+  .kpi-cell {
+    grid-row: span 3;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    grid-template-rows: subgrid;
+    row-gap: var(--space-1);
+    padding-block: var(--space-2);
+    padding-inline: var(--space-3);
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+  }
+
+  .site-footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding-block: var(--space-4);
+    padding-inline: var(--space-4);
+    background-color: var(--bg-rail);
+    border-block-start: 1px solid var(--border);
+    font-size: var(--text-xs);
+    color: var(--ink-muted);
+  }
+
+  @container stage (inline-size < 42rem) {
+    .stage-header {
+      padding-inline: var(--space-3);
+    }
+  }
+
+  @container inspector (inline-size < 16rem) {
+    .inspector-meta {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+
+  /* Narrow viewport & 390x844 mobile reflow (WCAG 1.4.10 Reflow, zero horizontal scroll) */
+  @media (max-width: 64rem) {
+    .cockpit-workspace {
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-areas:
+        "rail-left"
+        "stage"
+        "rail-inspector";
+      min-block-size: auto;
+    }
+
+    .rail-left {
+      border-inline-end: 0;
+      border-block-end: 1px solid var(--border);
+    }
+
+    .inspector-rail {
+      border-inline-start: 0;
+      border-block-start: 1px solid var(--border);
+    }
+
+    .editorial-grid {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+}

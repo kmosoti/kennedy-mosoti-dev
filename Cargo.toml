@@ -1,0 +1,48 @@
+[workspace]
+resolver = "3"
+members = [
+    "crates/site-content",
+    "crates/site-app",
+    "crates/site-server",
+]
+
+[workspace.package]
+edition = "2024"
+rust-version = "1.100"
+license = "Apache-2.0"
+publish = false
+
+[workspace.dependencies]
+site-content = { path = "crates/site-content" }
+iso-diagram = { git = "https://github.com/kmosoti/Jacquard.git", rev = "feb7dc228a0d761129e969abd2aa02dfb3611994", features = ["serde"] }
+cockpit-wiki = { git = "https://github.com/kmosoti/Jacquard.git", rev = "feb7dc228a0d761129e969abd2aa02dfb3611994" }
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"
+toml = "0.9"
+axum = "0.8.9"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "signal", "net", "fs"] }
+tower = "0.5.3"
+tower-http = { version = "0.6.11", features = ["fs", "compression-br", "compression-gzip", "set-header"] }
+leptos = { version = "0.8.23", default-features = false }
+wasm-bindgen = { version = "=0.2.130" }
+web-sys = { version = "0.3" }
+brotli = "9.1.1"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = "symbols"
+
+[profile.wasm-release]
+inherits = "release"
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = "none"

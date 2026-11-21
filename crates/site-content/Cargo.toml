@@ -1,0 +1,17 @@
+[package]
+name = "site-content"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+description = "Content models, Markdown/Mermaid parser, RSS feed builder, and claim/privacy validator for kennedy.mosoti.dev"
+
+[lints]
+workspace = true
+
+[dependencies]
+cockpit-wiki.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+toml.workspace = true
