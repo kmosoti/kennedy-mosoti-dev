@@ -6,7 +6,11 @@
 pub mod css;
 pub mod dto;
 #[cfg(feature = "ssr")]
+pub mod query;
+#[cfg(feature = "ssr")]
 pub mod router;
+#[cfg(feature = "ssr")]
+mod shell_doc;
 pub mod views;
 
 /// Progressive WASM hydration entry point for `#[island]` cockpit components.

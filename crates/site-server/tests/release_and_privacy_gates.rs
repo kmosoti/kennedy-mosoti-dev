@@ -5,6 +5,7 @@ use axum::body::{Body, to_bytes};
 use axum::http::{Request, StatusCode};
 use site_app::router::render_route;
 use site_content::load_from_dir;
+use site_content::privacy::contains_operational_or_secret_leak;
 use site_server::build_router;
 use std::collections::BTreeSet;
 use std::fs;
@@ -151,20 +152,6 @@ fn repo_enforces_zero_python_zero_threejs_and_zero_private_leaks() {
     let mut files = Vec::new();
     collect_files(&root, &mut files);
 
-    let banned = [
-        concat!("2600", ":", "1900"),
-        concat!("fd20", ":5fa:", "d190"),
-        concat!("green-infra", "-deployer"),
-        concat!("fedora", "-blade"),
-        concat!("age1", "txe8"),
-        concat!("AZ7", "VjM"),
-        concat!("bx6", "w9Q"),
-        concat!("/home/", "kmosoti"),
-        concat!("AGE-SECRET", "-KEY-"),
-        concat!("BEGIN OPENSSH ", "PRIVATE KEY"),
-        concat!("142.93.", "206.223"),
-    ];
-
     for file in files {
         let rel = file.strip_prefix(&root).unwrap_or(&file);
         let rel_s = rel.to_string_lossy();
@@ -180,13 +167,51 @@ fn repo_enforces_zero_python_zero_threejs_and_zero_private_leaks() {
         let Ok(text) = fs::read_to_string(&file) else {
             continue;
         };
-        for needle in banned {
-            assert!(
-                !text.contains(needle),
-                "forbidden private/NDA string `{needle}` found in {rel_s}"
-            );
-        }
+        assert!(
+            !contains_operational_or_secret_leak(&text),
+            "{rel_s}: matched prohibited privacy rule"
+        );
     }
+
+    let forbidden_macro = format!("{}cat!(", "con");
+    for guarded in [
+        "crates/site-content/src/validate.rs",
+        "crates/site-content/src/privacy.rs",
+        "crates/site-content/src/privacy_digests.rs",
+        "crates/site-server/tests/release_and_privacy_gates.rs",
+    ] {
+        let src = fs::read_to_string(root.join(guarded)).expect("read guarded file");
+        assert!(
+            !src.contains(&forbidden_macro),
+            "{guarded} must not reconstruct literals via {forbidden_macro}"
+        );
+    }
+}
+
+#[test]
+fn release_workflow_enforces_main_ancestry_and_version_match_in_both_jobs() {
+    let wf = fs::read_to_string(repo_root().join(".github/workflows/release.yml"))
+        .expect(".github/workflows/release.yml exists");
+    assert_eq!(
+        wf.matches("fetch-depth: 0").count(),
+        2,
+        "both build and publish jobs must use fetch-depth: 0"
+    );
+    assert_eq!(
+        wf.matches("git merge-base --is-ancestor \"${GITHUB_SHA}\" refs/remotes/origin/main")
+            .count(),
+        2,
+        "both build and publish jobs must require origin/main ancestry"
+    );
+    assert_eq!(
+        wf.matches("${GITHUB_REF_NAME#v}").count(),
+        4,
+        "build and publish jobs must verify tag version matches Cargo.toml [workspace.package] version"
+    );
+    assert!(
+        wf.contains(r"\[workspace\.package\]"),
+        "release workflow must read [workspace.package] version from Cargo.toml"
+    );
 }
 
 #[test]

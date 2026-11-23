@@ -1,8 +1,11 @@
 //! Hallmark CSS cascade, WCAG 2.2 AA OKLCH contrast, zero-slop, and SSR landmark tests.
 
 use site_app::css::{COMPONENTS_CSS, LAYOUT_CSS, SITE_CSS, TOKENS_CSS, combined_stylesheet};
-use site_app::router::render_route;
-use site_content::load_from_dir;
+use site_app::router::{
+    AssetManifest, QueryParamError, parse_bounded_query_param, render_route,
+    render_wiki_search_page,
+};
+use site_content::{WikiSearchIndex, load_from_dir};
 use std::collections::HashMap;
 use std::path::PathBuf;
 
@@ -190,5 +193,24 @@ fn all_ssr_routes_render_zero_js_landmarks_without_emojis() {
     assert!(
         wiki_q.html.contains("role=\"search\"") && wiki_q.html.contains("moiric-architecture"),
         "/wiki?q=moiric zero-JS fallback must render search form and ranked hit"
+    );
+
+    let index = WikiSearchIndex::build(&site.wiki);
+    let prebuilt = render_wiki_search_page(
+        &site.identity.positioning,
+        &index,
+        Some("moir"),
+        &AssetManifest::default(),
+    );
+    assert_eq!(prebuilt.status, 200);
+    assert!(prebuilt.html.contains("moiric-architecture"));
+
+    assert_eq!(
+        parse_bounded_query_param(&format!("q={}", "x".repeat(255)), "q"),
+        Err(QueryParamError::RawQueryTooLong)
+    );
+    assert_eq!(
+        parse_bounded_query_param(&format!("q={}{}", "%41".repeat(43), "x".repeat(86)), "q"),
+        Err(QueryParamError::DecodedValueTooLong)
     );
 }

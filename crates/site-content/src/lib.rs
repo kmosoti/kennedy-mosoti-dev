@@ -6,6 +6,8 @@ pub mod frontmatter;
 pub mod loader;
 pub mod markdown;
 pub mod model;
+pub mod privacy;
+mod privacy_digests;
 pub mod rss;
 pub mod search;
 pub mod validate;
