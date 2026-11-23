@@ -5,7 +5,7 @@ set -eu
 ROOT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
 cd "$ROOT_DIR"
 
-VERSION="${1:-0.1.0-alpha.1}"
+VERSION="${1:-0.1.1-alpha.1}"
 OUT_DIR="${OUT_DIR:-$ROOT_DIR/dist}"
 BUNDLE_NAME="kennedy-mosoti-dev-${VERSION}-linux-x86_64"
 STAGE_DIR="$OUT_DIR/$BUNDLE_NAME"

@@ -13,6 +13,35 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Verify reviewed-main ancestry and Cargo.toml version
+        run: |
+          set -eu
+          git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
+          git merge-base --is-ancestor "${GITHUB_SHA}" refs/remotes/origin/main
+          TAG_VER="${GITHUB_REF_NAME#v}"
+          if [ -z "${TAG_VER}" ] || [ "${TAG_VER}" = "${GITHUB_REF_NAME}" ]; then
+            echo "release tag '${GITHUB_REF_NAME}' must start with 'v'" >&2
+            exit 1
+          fi
+          WS_VER="$(awk -F '=' '
+            /^\[workspace\.package\][[:space:]]*$/ { in_ws=1; next }
+            /^\[/ { in_ws=0 }
+            in_ws && $1 ~ /^[[:space:]]*version[[:space:]]*$/ {
+              v = $2
+              sub(/#.*/, "", v)
+              gsub(/["[:space:]]/, "", v)
+              print v
+              exit
+            }
+          ' Cargo.toml)"
+          if [ -z "${WS_VER}" ] || [ "${TAG_VER}" != "${WS_VER}" ]; then
+            echo "tag version '${TAG_VER}' does not match Cargo.toml [workspace.package] version '${WS_VER}'" >&2
+            exit 1
+          fi
+
       - uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de # master
         with:
           toolchain: 1.100.0
@@ -47,13 +76,54 @@ jobs:
       attestations: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Verify reviewed-main ancestry and Cargo.toml version
+        run: |
+          set -eu
+          git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
+          git merge-base --is-ancestor "${GITHUB_SHA}" refs/remotes/origin/main
+          TAG_VER="${GITHUB_REF_NAME#v}"
+          if [ -z "${TAG_VER}" ] || [ "${TAG_VER}" = "${GITHUB_REF_NAME}" ]; then
+            echo "release tag '${GITHUB_REF_NAME}' must start with 'v'" >&2
+            exit 1
+          fi
+          WS_VER="$(awk -F '=' '
+            /^\[workspace\.package\][[:space:]]*$/ { in_ws=1; next }
+            /^\[/ { in_ws=0 }
+            in_ws && $1 ~ /^[[:space:]]*version[[:space:]]*$/ {
+              v = $2
+              sub(/#.*/, "", v)
+              gsub(/["[:space:]]/, "", v)
+              print v
+              exit
+            }
+          ' Cargo.toml)"
+          if [ -z "${WS_VER}" ] || [ "${TAG_VER}" != "${WS_VER}" ]; then
+            echo "tag version '${TAG_VER}' does not match Cargo.toml [workspace.package] version '${WS_VER}'" >&2
+            exit 1
+          fi
+
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: release-bundle
           path: release-dist
 
-      - name: Verify SHA256SUMS
-        run: (cd release-dist && sha256sum -c SHA256SUMS)
+      - name: Verify SHA256SUMS and release evidence binding
+        run: |
+          set -eu
+          (cd release-dist && sha256sum -c SHA256SUMS)
+          EVID_VER="$(jq -r '.version' release-dist/RELEASE-EVIDENCE.json)"
+          EVID_SHA="$(jq -r '.commit' release-dist/RELEASE-EVIDENCE.json)"
+          [ "${EVID_VER}" = "${GITHUB_REF_NAME#v}" ] || {
+            echo "RELEASE-EVIDENCE.json version mismatch: ${EVID_VER}" >&2
+            exit 1
+          }
+          [ "${EVID_SHA}" = "${GITHUB_SHA}" ] || {
+            echo "RELEASE-EVIDENCE.json commit mismatch: ${EVID_SHA}" >&2
+            exit 1
+          }
 
       - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:

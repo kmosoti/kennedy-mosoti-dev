@@ -102,6 +102,12 @@ impl WikiSearchIndex {
         self.bm25.doc_count()
     }
 
+    /// Returns the indexed wiki articles in canonical order.
+    #[must_use]
+    pub fn articles(&self) -> &[WikiArticle] {
+        &self.articles
+    }
+
     /// Queries the index using `cockpit-wiki` Okapi BM25 first, then trigram overlap fallback
     /// for partial/prefix queries (e.g. `"nom"`, `"iso"`, `"merm"`).
     #[must_use]

@@ -9,9 +9,43 @@ use std::fs;
 use std::path::Path;
 
 pub const NO_CACHE: &str = "no-cache";
+pub const NO_STORE: &str = "no-store";
 pub const IMMUTABLE: &str = "public, max-age=31536000, immutable";
 pub const DAY_CACHE: &str = "public, max-age=86400";
 pub const HOUR_CACHE: &str = "public, max-age=3600";
+
+/// Builds a dynamic `no-cache` HTTP response without computing a BLAKE3 `ETag`.
+pub fn dynamic_no_cache_response(
+    status: StatusCode,
+    body: impl Into<Bytes>,
+    content_type: &'static str,
+) -> Response {
+    let mut resp = (status, body.into()).into_response();
+    resp.headers_mut()
+        .insert(header::CONTENT_TYPE, HeaderValue::from_static(content_type));
+    resp.headers_mut()
+        .insert(header::CACHE_CONTROL, HeaderValue::from_static(NO_CACHE));
+    resp
+}
+
+/// Builds a dynamic non-cacheable error response (`no-store`) without BLAKE3 hashing.
+pub fn dynamic_error_response(
+    status: StatusCode,
+    body: impl Into<Bytes>,
+    content_type: &'static str,
+    retry_after: Option<&'static str>,
+) -> Response {
+    let mut resp = (status, body.into()).into_response();
+    resp.headers_mut()
+        .insert(header::CONTENT_TYPE, HeaderValue::from_static(content_type));
+    resp.headers_mut()
+        .insert(header::CACHE_CONTROL, HeaderValue::from_static(NO_STORE));
+    if let Some(secs) = retry_after {
+        resp.headers_mut()
+            .insert(header::RETRY_AFTER, HeaderValue::from_static(secs));
+    }
+    resp
+}
 
 /// Progressive-enhancement ES module for live BM25 + trigram filtering on `/wiki`.
 pub const WIKI_SEARCH_JS: &str = r#"const input = document.getElementById("wiki-search-input");

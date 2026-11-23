@@ -143,11 +143,11 @@ pub struct Identity {
     pub disciplines: Vec<Discipline>,
     #[serde(default)]
     pub operating_pattern: Vec<OperatingStage>,
-    #[serde(skip)]
+    #[serde(skip_deserializing)]
     pub body_md: String,
-    #[serde(skip)]
+    #[serde(skip_deserializing)]
     pub body_html: String,
-    #[serde(skip)]
+    #[serde(skip_deserializing)]
     pub internal_links: Vec<String>,
 }
 
@@ -164,7 +164,7 @@ pub struct Skill {
 }
 
 /// Skills document (`content/skills.md`).
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct SkillsDoc {
     pub skills: Vec<Skill>,
     pub body_md: String,
@@ -191,11 +191,11 @@ pub struct Record {
     pub claim_boundary: Option<String>,
     #[serde(default)]
     pub links: Vec<ProfileLink>,
-    #[serde(skip)]
+    #[serde(skip_deserializing)]
     pub body_md: String,
-    #[serde(skip)]
+    #[serde(skip_deserializing)]
     pub body_html: String,
-    #[serde(skip)]
+    #[serde(skip_deserializing)]
     pub internal_links: Vec<String>,
 }
 
@@ -214,11 +214,11 @@ pub struct Project {
     pub claim_boundary: String,
     #[serde(default)]
     pub highlights: Vec<String>,
-    #[serde(skip)]
+    #[serde(skip_deserializing)]
     pub body_md: String,
-    #[serde(skip)]
+    #[serde(skip_deserializing)]
     pub body_html: String,
-    #[serde(skip)]
+    #[serde(skip_deserializing)]
     pub internal_links: Vec<String>,
 }
 
@@ -232,13 +232,13 @@ pub struct WikiArticle {
     pub summary: String,
     #[serde(default)]
     pub tags: Vec<String>,
-    #[serde(skip)]
+    #[serde(skip_deserializing)]
     pub body_md: String,
-    #[serde(skip)]
+    #[serde(skip_deserializing)]
     pub body_html: String,
-    #[serde(skip)]
+    #[serde(skip_deserializing)]
     pub headings: Vec<HeadingOutline>,
-    #[serde(skip)]
+    #[serde(skip_deserializing)]
     pub internal_links: Vec<String>,
 }
 
@@ -252,13 +252,13 @@ pub struct BlogPost {
     pub summary: String,
     #[serde(default)]
     pub tags: Vec<String>,
-    #[serde(skip)]
+    #[serde(skip_deserializing)]
     pub body_md: String,
-    #[serde(skip)]
+    #[serde(skip_deserializing)]
     pub body_html: String,
-    #[serde(skip)]
+    #[serde(skip_deserializing)]
     pub headings: Vec<HeadingOutline>,
-    #[serde(skip)]
+    #[serde(skip_deserializing)]
     pub internal_links: Vec<String>,
 }
 
@@ -271,7 +271,7 @@ pub struct HeadingOutline {
 }
 
 /// Complete validated content bundle loaded from `content/`.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct SiteContent {
     pub identity: Identity,
     pub skills: SkillsDoc,

@@ -1,22 +1,11 @@
 //! Claim-discipline, internal-link integrity, and strict privacy checks (`CONTRACT.md` §4–§6).
 
 use crate::model::{EvidenceClass, RecordKind, SiteContent};
+use crate::privacy::{contains_content_policy_or_privacy_leak, privacy_error};
+use crate::rss::{build_atom_feed, build_rss_feed, build_sitemap_xml};
+use crate::search::WikiSearchIndex;
+use serde_json::Value;
 use std::collections::{HashMap, HashSet};
-
-/// FNV-1a 64-bit word hash so the verifier enforces client-name exclusion
-/// without storing the excluded literal strings in public source code.
-fn fnv1a_64(word: &str) -> u64 {
-    word.bytes().fold(0xcbf2_9ce4_8422_2325, |h, b| {
-        (h ^ u64::from(b)).wrapping_mul(0x0100_0000_01b3)
-    })
-}
-
-const EXCLUDED_CLIENT_HASHES: [u64; 4] = [
-    0x3d49_eeb5_c375_b7cb,
-    0xa72f_7b76_4c09_639d,
-    0x167b_30de_10cb_d437,
-    0x4565_b6df_988d_6cb1,
-];
 
 /// Runs all Contract §4–§6 validation checks and returns all accumulated errors.
 pub fn validate_all(content: &SiteContent) -> Result<(), Vec<String>> {
@@ -34,11 +23,19 @@ pub fn validate_all(content: &SiteContent) -> Result<(), Vec<String>> {
     }
 }
 
+fn safe_label(val: &str) -> &str {
+    if contains_content_policy_or_privacy_leak(val) {
+        "[redacted]"
+    } else {
+        val
+    }
+}
+
 fn check_identity(content: &SiteContent, errors: &mut Vec<String>) {
     if content.identity.headline != "Platform, Reliability & Systems Automation Engineer" {
         errors.push(format!(
             "identity headline `{}` violates CONTRACT §5",
-            content.identity.headline
+            safe_label(&content.identity.headline)
         ));
     }
     if content.identity.disciplines.len() != 4 {
@@ -57,7 +54,7 @@ fn check_identity(content: &SiteContent, errors: &mut Vec<String>) {
         if !link.href.starts_with("https://") && !link.href.starts_with("mailto:") {
             errors.push(format!(
                 "identity link `{}` must use https:// or mailto:",
-                link.href
+                safe_label(&link.href)
             ));
         }
     }
@@ -74,12 +71,16 @@ fn check_skills_and_records(content: &SiteContent, errors: &mut Vec<String>) {
         for rec_slug in &skill.records {
             match record_map.get(rec_slug.as_str()) {
                 None => errors.push(format!(
-                    "skill `{}` references unknown record `{rec_slug}`",
-                    skill.tag
+                    "skill `{}` references unknown record `{}`",
+                    safe_label(&skill.tag),
+                    safe_label(rec_slug)
                 )),
                 Some(&ev) if ev != skill.evidence => errors.push(format!(
-                    "skill `{}` ({:?}) cites record `{rec_slug}` of mismatched class ({:?})",
-                    skill.tag, skill.evidence, ev
+                    "skill `{}` ({:?}) cites record `{}` of mismatched class ({:?})",
+                    safe_label(&skill.tag),
+                    skill.evidence,
+                    safe_label(rec_slug),
+                    ev
                 )),
                 Some(_) => {}
             }
@@ -95,7 +96,7 @@ fn check_skills_and_records(content: &SiteContent, errors: &mut Vec<String>) {
             if !valid_boundary {
                 errors.push(format!(
                     "record `{}` lacks an adequate claim_boundary",
-                    rec.slug
+                    safe_label(&rec.slug)
                 ));
             }
         }
@@ -115,7 +116,7 @@ fn check_skills_and_records(content: &SiteContent, errors: &mut Vec<String>) {
                 if text.chars().any(|c| c.is_ascii_digit()) {
                     errors.push(format!(
                         "production/exposure record `{}` states an ASCII digit in {field}",
-                        rec.slug
+                        safe_label(&rec.slug)
                     ));
                 }
             }
@@ -135,13 +136,14 @@ fn check_projects(content: &SiteContent, errors: &mut Vec<String>) {
         if proj.claim_boundary.trim().len() < 20 {
             errors.push(format!(
                 "project `{}` must include a substantive claim_boundary",
-                proj.slug
+                safe_label(&proj.slug)
             ));
         }
         if !proj.repo.starts_with("https://github.com/kmosoti/") {
             errors.push(format!(
                 "project `{}` repo `{}` must target https://github.com/kmosoti/...",
-                proj.slug, proj.repo
+                safe_label(&proj.slug),
+                safe_label(&proj.repo)
             ));
         }
     }
@@ -178,7 +180,11 @@ fn check_internal_links(content: &SiteContent, errors: &mut Vec<String>) {
         for link in links {
             let clean = link.split(['#', '?']).next().unwrap_or(link);
             if !valid_routes.contains(clean) {
-                errs.push(format!("{source}: broken internal link `{link}`"));
+                errs.push(format!(
+                    "{}: broken internal link `{}`",
+                    safe_label(source),
+                    safe_label(link)
+                ));
             }
         }
     };
@@ -199,82 +205,61 @@ fn check_internal_links(content: &SiteContent, errors: &mut Vec<String>) {
 }
 
 fn check_privacy_and_nda(content: &SiteContent, errors: &mut Vec<String>) {
-    let mut buckets: Vec<(String, String)> = vec![
-        (
-            "identity".into(),
-            format!(
-                "{} {} {}",
-                content.identity.positioning, content.identity.bio, content.identity.body_md
-            ),
-        ),
-        ("skills".into(), content.skills.body_md.clone()),
-    ];
-    for r in &content.records {
-        buckets.push((
-            format!("record/{}", r.slug),
-            format!(
-                "{} {} {} {}",
-                r.title,
-                r.summary,
-                r.claim_boundary.as_deref().unwrap_or(""),
-                r.body_md
-            ),
-        ));
-    }
-    for p in &content.projects {
-        buckets.push((
-            format!("project/{}", p.slug),
-            format!(
-                "{} {} {} {}",
-                p.name, p.summary, p.claim_boundary, p.body_md
-            ),
-        ));
-    }
-    for w in &content.wiki {
-        buckets.push((
-            format!("wiki/{}", w.slug),
-            format!("{} {} {}", w.title, w.summary, w.body_md),
-        ));
-    }
-    for b in &content.blog {
-        buckets.push((
-            format!("blog/{}", b.slug),
-            format!("{} {} {}", b.title, b.summary, b.body_md),
-        ));
+    match serde_json::to_value(content) {
+        Ok(val) => scan_json_value("content", &val, errors),
+        Err(_) => errors.push(privacy_error("content")),
     }
 
-    for (loc, raw) in buckets {
-        let lower = raw.to_lowercase();
-        for word in lower.split(|c: char| !c.is_alphanumeric()) {
-            if !word.is_empty() && EXCLUDED_CLIENT_HASHES.contains(&fnv1a_64(word)) {
-                errors.push(format!(
-                    "{loc}: matched excluded client hash token `{word}`"
-                ));
+    match serde_json::to_string(content) {
+        Ok(canonical_json) => {
+            if contains_content_policy_or_privacy_leak(&canonical_json) {
+                errors.push(privacy_error("content_json"));
             }
         }
-        let banned_phrases = [
-            "compensation",
-            "salary",
-            "w-2",
-            "interview",
-            "story bank",
-            "career assessment",
-            "splunk engineer",
-            "senior sre",
-            concat!("2600", ":", "1900"),
-            concat!("fd20", ":5fa:", "d190"),
-            concat!("green-infra", "-deployer"),
-            concat!("fedora", "-blade"),
-            concat!("age-secret", "-key-"),
-            concat!("begin openssh ", "private key"),
-            concat!("/home/", "kmosoti"),
-        ];
-        for banned in banned_phrases {
-            if lower.contains(banned) {
-                errors.push(format!(
-                    "{loc}: matched banned privacy/positioning phrase `{banned}`"
-                ));
+        Err(_) => errors.push(privacy_error("content_json")),
+    }
+
+    let atom = build_atom_feed(content);
+    if contains_content_policy_or_privacy_leak(&atom) {
+        errors.push(privacy_error("atom_feed"));
+    }
+
+    let rss = build_rss_feed(content);
+    if contains_content_policy_or_privacy_leak(&rss) {
+        errors.push(privacy_error("rss_feed"));
+    }
+
+    let sitemap = build_sitemap_xml(content);
+    if contains_content_policy_or_privacy_leak(&sitemap) {
+        errors.push(privacy_error("sitemap_xml"));
+    }
+
+    let search_json = WikiSearchIndex::build(&content.wiki).to_client_json();
+    if contains_content_policy_or_privacy_leak(&search_json) {
+        errors.push(privacy_error("wiki_search_json"));
+    }
+}
+
+fn scan_json_value(loc: &str, val: &Value, errors: &mut Vec<String>) {
+    match val {
+        Value::String(text) => {
+            if contains_content_policy_or_privacy_leak(text) {
+                errors.push(privacy_error(loc));
             }
         }
+        Value::Array(items) => {
+            for (idx, item) in items.iter().enumerate() {
+                scan_json_value(&format!("{loc}[{idx}]"), item, errors);
+            }
+        }
+        Value::Object(map) => {
+            for (key, item) in map {
+                if contains_content_policy_or_privacy_leak(key) {
+                    errors.push(privacy_error(&format!("{loc}.{key}")));
+                }
+                scan_json_value(&format!("{loc}.{key}"), item, errors);
+            }
+        }
+        Value::Null | Value::Bool(_) | Value::Number(_) => {}
     }
 }

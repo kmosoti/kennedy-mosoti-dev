@@ -2,26 +2,53 @@
 
 use crate::views::layout::{NavSection, SiteShell};
 use leptos::prelude::*;
-use site_content::{BlogPost, SiteContent, WikiArticle, WikiSearchIndex};
+use site_content::{BlogPost, SiteContent, WikiArticle, WikiSearchHit};
 
-/// Public Wiki index (`/wiki`, with zero-JS `?q=` BM25/trigram search fallback).
+/// Lightweight wiki summary row rendered on `/wiki` and `/wiki?q=...` without cloning article bodies.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WikiCardItem {
+    pub slug: String,
+    pub title: String,
+    pub category: String,
+    pub updated: String,
+    pub summary: String,
+    pub tags: Vec<String>,
+}
+
+impl From<&WikiArticle> for WikiCardItem {
+    fn from(w: &WikiArticle) -> Self {
+        Self {
+            slug: w.slug.clone(),
+            title: w.title.clone(),
+            category: w.category.clone(),
+            updated: w.updated.clone(),
+            summary: w.summary.clone(),
+            tags: w.tags.clone(),
+        }
+    }
+}
+
+impl From<&WikiSearchHit> for WikiCardItem {
+    fn from(h: &WikiSearchHit) -> Self {
+        Self {
+            slug: h.slug.clone(),
+            title: h.title.clone(),
+            category: h.category.clone(),
+            updated: h.updated.clone(),
+            summary: h.summary.clone(),
+            tags: h.tags.clone(),
+        }
+    }
+}
+
+/// Public Wiki index (`/wiki`, with zero-JS `?q=` precomputed BM25/trigram search results).
 #[component]
 pub fn WikiIndexPage(
-    content: SiteContent,
+    total_count: usize,
+    visible_articles: Vec<WikiCardItem>,
     #[prop(default = None)] query: Option<String>,
 ) -> impl IntoView {
     let active_q = query.unwrap_or_default().trim().to_owned();
-    let total_count = content.wiki.len();
-
-    let visible_articles: Vec<WikiArticle> = if active_q.is_empty() {
-        content.wiki
-    } else {
-        let index = WikiSearchIndex::build(&content.wiki);
-        let hits = index.search(&active_q, total_count);
-        hits.into_iter()
-            .filter_map(|h| content.wiki.iter().find(|w| w.slug == h.slug).cloned())
-            .collect()
-    };
 
     let status_text = if active_q.is_empty() {
         format!("Showing all {total_count} wiki articles.")

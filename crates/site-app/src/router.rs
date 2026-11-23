@@ -1,12 +1,19 @@
 //! SSR route resolver producing complete standalone HTML documents without JS requirements.
 
-use crate::views::layout::{NavSection, SiteShell};
+pub use crate::query::{
+    MAX_DECODED_QUERY_BYTES, MAX_QUERY_TERMS, MAX_RAW_QUERY_BYTES, QueryParamError,
+    extract_query_param, parse_bounded_query_param,
+};
+use crate::shell_doc::{
+    ScriptKind, bad_request_page, not_found_page, render_view, wrap_html_document,
+};
 use crate::views::pages_bio_archive::{ArchiveIndexPage, ArchiveRecordPage, BiographyPage};
 use crate::views::pages_projects::{HomePage, ProjectDetailPage, ProjectsIndexPage};
-use crate::views::pages_wiki_blog::{BlogIndexPage, BlogPostPage, WikiArticlePage, WikiIndexPage};
+use crate::views::pages_wiki_blog::{
+    BlogIndexPage, BlogPostPage, WikiArticlePage, WikiCardItem, WikiIndexPage,
+};
 use leptos::prelude::*;
-use site_content::SiteContent;
-use site_content::markdown::{escape_attr, escape_html};
+use site_content::{SiteContent, WikiSearchIndex};
 
 /// Asset URLs injected into SSR `<head>` tags (supports content-hashed immutable URLs).
 #[derive(Debug, Clone)]
@@ -37,6 +44,57 @@ pub struct RenderedPage {
 /// Renders an SSR document for `path` using default asset URLs.
 pub fn render_route(content: &SiteContent, path: &str) -> RenderedPage {
     render_route_with_assets(content, path, &AssetManifest::default())
+}
+
+/// Renders `/wiki` or `/wiki?q=...` using an existing startup-built [`WikiSearchIndex`],
+/// avoiding per-request index reconstruction or full-content cloning.
+pub fn render_wiki_search_page(
+    positioning: &str,
+    wiki_search: &WikiSearchIndex,
+    query: Option<&str>,
+    assets: &AssetManifest,
+) -> RenderedPage {
+    let total_count = wiki_search.doc_count();
+    let active_q = query
+        .map(str::trim)
+        .filter(|q| !q.is_empty())
+        .map(str::to_owned);
+
+    let visible_articles: Vec<WikiCardItem> = match &active_q {
+        None => wiki_search
+            .articles()
+            .iter()
+            .map(WikiCardItem::from)
+            .collect(),
+        Some(q) => wiki_search
+            .search(q, total_count)
+            .iter()
+            .map(WikiCardItem::from)
+            .collect(),
+    };
+
+    let body_html = render_view(move || {
+        view! {
+            <WikiIndexPage
+                total_count=total_count
+                visible_articles=visible_articles
+                query=active_q
+            />
+        }
+    });
+    let title = "Engineering Wiki — Kennedy Mosoti".to_owned();
+    let html = wrap_html_document(
+        positioning,
+        &title,
+        ScriptKind::WikiSearch,
+        assets,
+        &body_html,
+    );
+    RenderedPage {
+        status: 200,
+        title,
+        html,
+    }
 }
 
 /// Renders an SSR document for `path` using explicit [`AssetManifest`] URLs.
@@ -73,15 +131,35 @@ pub fn render_route_with_assets(
             )
         }
         "/wiki" => {
-            let c = content.clone();
-            let q = query_raw.and_then(|qs| extract_query_param(qs, "q"));
-            let html = render_view(move || view! { <WikiIndexPage content=c query=q /> });
-            (
-                200,
-                "Engineering Wiki — Kennedy Mosoti".to_owned(),
-                ScriptKind::WikiSearch,
-                html,
-            )
+            let q_res = match query_raw {
+                Some(qs) => parse_bounded_query_param(qs, "q"),
+                None => Ok(None),
+            };
+            match q_res {
+                Err(_) => bad_request_page("Invalid wiki search query."),
+                Ok(q) => {
+                    let total_count = content.wiki.len();
+                    let visible_articles: Vec<WikiCardItem> = match &q {
+                        None => content.wiki.iter().map(WikiCardItem::from).collect(),
+                        Some(term_str) => filter_wiki_cards_lightweight(&content.wiki, term_str),
+                    };
+                    let html = render_view(move || {
+                        view! {
+                            <WikiIndexPage
+                                total_count=total_count
+                                visible_articles=visible_articles
+                                query=q
+                            />
+                        }
+                    });
+                    (
+                        200,
+                        "Engineering Wiki — Kennedy Mosoti".to_owned(),
+                        ScriptKind::WikiSearch,
+                        html,
+                    )
+                }
+            }
         }
         "/blog" => {
             let c = content.clone();
@@ -158,138 +236,46 @@ pub fn render_route_with_assets(
         _ => not_found_page(route),
     };
 
-    let extra_script = match script_kind {
-        ScriptKind::Island => format!(
-            "\n  <script type=\"module\" src=\"{}\" defer></script>",
-            escape_attr(&assets.island_boot_src)
-        ),
-        ScriptKind::WikiSearch => format!(
-            "\n  <script type=\"module\" src=\"{}\" defer></script>",
-            escape_attr(&assets.wiki_search_src)
-        ),
-        ScriptKind::None => String::new(),
-    };
-
-    let doc = format!(
-        "<!doctype html>\n\
-<html lang=\"en\">\n\
-<head>\n\
-  <meta charset=\"utf-8\">\n\
-  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n\
-  <meta name=\"color-scheme\" content=\"light dark\">\n\
-  <meta name=\"description\" content=\"{desc}\">\n\
-  <title>{title_esc}</title>\n\
-  <link rel=\"stylesheet\" href=\"{css_href}\">\n\
-  <link rel=\"manifest\" href=\"/manifest.webmanifest\">\n\
-  <link rel=\"icon\" href=\"/icons/icon.svg\" type=\"image/svg+xml\">\n\
-  <link rel=\"alternate\" type=\"application/atom+xml\" title=\"Kennedy Mosoti Blog\" href=\"/feed.xml\">{extra_script}\n\
-</head>\n\
-<body>\n\
-{body_html}\n\
-</body>\n\
-</html>\n",
-        desc = escape_attr(&content.identity.positioning),
-        title_esc = escape_html(&title),
-        css_href = escape_attr(&assets.css_href),
+    let html = wrap_html_document(
+        &content.identity.positioning,
+        &title,
+        script_kind,
+        assets,
+        &body_html,
     );
-
     RenderedPage {
         status,
         title,
-        html: doc,
-    }
-}
-
-/// Extracts and percent-decodes a query parameter value from a URL query string.
-pub fn extract_query_param(query: &str, key: &str) -> Option<String> {
-    for pair in query.split('&') {
-        let (k, v) = pair.split_once('=').unwrap_or((pair, ""));
-        if k == key {
-            let decoded = percent_decode(v);
-            let trimmed = decoded.trim();
-            if !trimmed.is_empty() {
-                return Some(trimmed.to_owned());
-            }
-        }
-    }
-    None
-}
-
-fn percent_decode(input: &str) -> String {
-    let bytes = input.as_bytes();
-    let mut out = Vec::with_capacity(bytes.len());
-    let mut i = 0;
-    while i < bytes.len() {
-        match bytes[i] {
-            b'+' => {
-                out.push(b' ');
-                i += 1;
-            }
-            b'%' if i + 2 < bytes.len() => {
-                if let (Some(hi), Some(lo)) = (hex_val(bytes[i + 1]), hex_val(bytes[i + 2])) {
-                    out.push((hi << 4) | lo);
-                    i += 3;
-                } else {
-                    out.push(b'%');
-                    i += 1;
-                }
-            }
-            b => {
-                out.push(b);
-                i += 1;
-            }
-        }
-    }
-    String::from_utf8_lossy(&out).into_owned()
-}
-
-fn hex_val(b: u8) -> Option<u8> {
-    match b {
-        b'0'..=b'9' => Some(b - b'0'),
-        b'a'..=b'f' => Some(b - b'a' + 10),
-        b'A'..=b'F' => Some(b - b'A' + 10),
-        _ => None,
-    }
-}
-
-#[derive(Clone, Copy)]
-enum ScriptKind {
-    None,
-    Island,
-    WikiSearch,
-}
-
-fn render_view<F, V>(f: F) -> String
-where
-    F: FnOnce() -> V,
-    V: IntoView,
-{
-    let owner = Owner::new();
-    owner.with(|| f().to_html())
-}
-
-fn not_found_page(route: &str) -> (u16, String, ScriptKind, String) {
-    let route_s = route.to_owned();
-    let html = render_view(move || {
-        view! {
-            <SiteShell section=NavSection::Home>
-                <div class="page-container app-surface">
-                    <h1>"404 — Route Not Found"</h1>
-                    <p class="surface-lead">{format!("No published page exists at `{route_s}`.")}</p>
-                    <div class="stage-toolbar">
-                        <a class="btn primary" href="/">"Return to Cockpit"</a>
-                        <a class="btn" href="/projects">"Projects"</a>
-                        <a class="btn" href="/wiki">"Wiki"</a>
-                        <a class="btn" href="/blog">"Blog"</a>
-                    </div>
-                </div>
-            </SiteShell>
-        }
-    });
-    (
-        404,
-        "Not Found — kennedy.mosoti.dev".to_owned(),
-        ScriptKind::None,
         html,
-    )
+    }
+}
+
+fn filter_wiki_cards_lightweight(
+    articles: &[site_content::WikiArticle],
+    query: &str,
+) -> Vec<WikiCardItem> {
+    let terms: Vec<String> = query
+        .split(|c: char| !c.is_ascii_alphanumeric())
+        .filter(|t| !t.is_empty())
+        .map(str::to_ascii_lowercase)
+        .collect();
+    if terms.is_empty() {
+        return articles.iter().map(WikiCardItem::from).collect();
+    }
+    articles
+        .iter()
+        .filter(|w| {
+            let hay = format!(
+                "{} {} {} {} {}",
+                w.slug,
+                w.title,
+                w.category,
+                w.tags.join(" "),
+                w.summary
+            )
+            .to_ascii_lowercase();
+            terms.iter().all(|t| hay.contains(t.as_str()))
+        })
+        .map(WikiCardItem::from)
+        .collect()
 }

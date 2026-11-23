@@ -1753,7 +1753,7 @@ checksum = "3a219298ac11a56ea9a6d2120044824d6f01aeb034955e7af7bc16858527deea"
 
 [[package]]
 name = "site-app"
-version = "0.1.0"
+version = "0.1.1-alpha.1"
 dependencies = [
  "iso-diagram",
  "leptos",
@@ -1765,8 +1765,9 @@ dependencies = [
 
 [[package]]
 name = "site-content"
-version = "0.1.0"
+version = "0.1.1-alpha.1"
 dependencies = [
+ "blake3",
  "cockpit-wiki",
  "serde",
  "serde_json",
@@ -1775,7 +1776,7 @@ dependencies = [
 
 [[package]]
 name = "site-server"
-version = "0.1.0"
+version = "0.1.1-alpha.1"
 dependencies = [
  "axum",
  "blake3",

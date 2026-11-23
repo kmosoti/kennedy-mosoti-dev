@@ -8,18 +8,20 @@ use crate::cache::{
 use crate::headers::{
     cache_layer, csp_layer, frame_deny_layer, nosniff_layer, permissions_layer, referrer_layer,
 };
+use crate::search_routes::{SearchLimitConfig, serve_wiki_search_api, serve_wiki_ssr_search};
 use axum::Router;
 use axum::extract::State;
 use axum::http::{HeaderMap, StatusCode, Uri};
 use axum::response::Response;
 use axum::routing::get;
-use site_app::router::{AssetManifest, extract_query_param, render_route_with_assets};
+use site_app::router::{AssetManifest, render_route_with_assets};
 use site_content::{
     SiteContent, WikiSearchIndex, build_atom_feed, build_rss_feed, build_sitemap_xml,
 };
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use tokio::sync::Semaphore;
 use tower::ServiceBuilder;
 use tower_http::compression::CompressionLayer;
 use tower_http::services::{ServeDir, ServeFile};
@@ -39,6 +41,8 @@ pub struct AppState {
     pub rss_xml: Arc<CachedAsset>,
     pub sitemap_xml: Arc<CachedAsset>,
     pub pkg_assets: Arc<HashMap<String, CachedAsset>>,
+    pub search_semaphore: Arc<Semaphore>,
+    pub search_limits: SearchLimitConfig,
 }
 
 impl AppState {
@@ -49,6 +53,15 @@ impl AppState {
 
     /// Pre-renders all static SSR routes, feeds, CSS, and content-hashed `/pkg/*` assets at startup.
     pub fn from_pkg_dir(content: SiteContent, pkg_dir: &Path) -> Self {
+        Self::from_pkg_dir_with_limits(content, pkg_dir, SearchLimitConfig::default())
+    }
+
+    /// Pre-renders all static routes and configures explicit dynamic search concurrency/timeout budgets.
+    pub fn from_pkg_dir_with_limits(
+        content: SiteContent,
+        pkg_dir: &Path,
+        search_limits: SearchLimitConfig,
+    ) -> Self {
         let combined_css = site_app::css::combined_stylesheet();
         let resolved = resolve_pkg_assets(pkg_dir, &combined_css, WIKI_SEARCH_JS);
         let manifest = resolved.manifest.clone();
@@ -94,6 +107,7 @@ impl AppState {
         );
 
         let pkg_assets = build_pkg_asset_map(resolved);
+        let max_permits = search_limits.max_concurrent.max(1);
 
         Self {
             content: Arc::new(content),
@@ -107,6 +121,8 @@ impl AppState {
             rss_xml: Arc::new(rss_xml),
             sitemap_xml: Arc::new(sitemap_xml),
             pkg_assets: Arc::new(pkg_assets),
+            search_semaphore: Arc::new(Semaphore::new(max_permits)),
+            search_limits,
         }
     }
 }
@@ -168,7 +184,22 @@ fn build_pkg_asset_map(resolved: ResolvedPkgAssets) -> HashMap<String, CachedAss
 /// Builds the complete Axum `Router` for serving and integration testing.
 pub fn build_router(content: SiteContent, public_dir: PathBuf, pkg_dir: PathBuf) -> Router {
     let state = AppState::from_pkg_dir(content, &pkg_dir);
+    build_router_from_state(state, public_dir, pkg_dir)
+}
 
+/// Builds the Axum `Router` with explicit dynamic search concurrency/timeout budgets.
+pub fn build_router_with_limits(
+    content: SiteContent,
+    public_dir: PathBuf,
+    pkg_dir: PathBuf,
+    search_limits: SearchLimitConfig,
+) -> Router {
+    let state = AppState::from_pkg_dir_with_limits(content, &pkg_dir, search_limits);
+    build_router_from_state(state, public_dir, pkg_dir)
+}
+
+/// Builds the Axum `Router` from an existing [`AppState`].
+pub fn build_router_from_state(state: AppState, public_dir: PathBuf, pkg_dir: PathBuf) -> Router {
     let precompressed_dir = |path: PathBuf| {
         ServeDir::new(path)
             .precompressed_zstd()
@@ -254,20 +285,6 @@ async fn serve_wiki_search_json(State(state): State<AppState>, headers: HeaderMa
     state.wiki_search_json.respond(&headers)
 }
 
-async fn serve_wiki_search_api(
-    State(state): State<AppState>,
-    headers: HeaderMap,
-    uri: Uri,
-) -> Response {
-    let q = uri
-        .query()
-        .and_then(|qs| extract_query_param(qs, "q"))
-        .unwrap_or_default();
-    let hits = state.wiki_search.search(&q, 20);
-    let body = serde_json::json!({ "query": q, "hits": hits }).to_string();
-    CachedAsset::ok(body, "application/json; charset=utf-8", NO_CACHE).respond(&headers)
-}
-
 async fn serve_pkg_cached(State(state): State<AppState>, headers: HeaderMap, uri: Uri) -> Response {
     let key = format!("/pkg{}", uri.path());
     if let Some(asset) = state.pkg_assets.get(&key) {
@@ -283,11 +300,9 @@ async fn serve_ssr_route(State(state): State<AppState>, headers: HeaderMap, uri:
 
     if route == "/wiki"
         && let Some(qs) = uri.query()
-        && extract_query_param(qs, "q").is_some()
+        && let Some(resp) = serve_wiki_ssr_search(&state, qs).await
     {
-        let pq = uri.path_and_query().map(|x| x.as_str()).unwrap_or(raw_path);
-        let page = render_route_with_assets(&state.content, pq, &state.assets);
-        return CachedAsset::ok(page.html, "text/html; charset=utf-8", NO_CACHE).respond(&headers);
+        return resp;
     }
 
     if let Some(cached) = state.ssr_cache.get(route) {
